@@ -302,48 +302,16 @@ class MistralShell(app.App):
 
         self._set_shell_commands(self._get_commands(ver))
 
-        do_help = ('help' in argv) or ('-h' in argv) or not argv
-
-        # Set default for auth_url if not supplied. The default is not
-        # set at the parser to support use cases where auth is not enabled.
-        # An example use case would be a developer's environment.
-        if not self.options.auth_url:
-            if self.options.password or self.options.token:
-                self.options.auth_url = 'http://localhost:35357/v3'
-
-        # bash-completion should not require authentification.
-        if do_help or ('bash-completion' in argv):
-            self.options.auth_url = None
-
-        kwargs = {
-            'cert': self.options.os_cert,
-            'key': self.options.os_key
-        }
-
-        self.client = client.client(
-            mistral_url=self.options.mistral_url,
-            username=self.options.username,
-            api_key=self.options.password,
-            project_name=self.options.tenant_name,
-            auth_url=self.options.auth_url,
-            project_id=self.options.tenant_id,
-            endpoint_type=self.options.endpoint_type,
-            service_type=self.options.service_type,
-            auth_token=self.options.token,
-            cacert=self.options.os_cacert,
-            insecure=self.options.insecure,
-            **kwargs
-        )
-
-        # Adding client_manager variable to make mistral client work with
-        # unified openstack client.
-        ClientManager = type(
-            'ClientManager',
-            (object,),
-            dict(workflow_engine=self.client)
-        )
-
-        self.client_manager = ClientManager()
+        self.client = client.client(mistral_url=self.options.mistral_url,
+                                    username=self.options.username,
+                                    api_key=self.options.password,
+                                    project_name=self.options.tenant_name,
+                                    auth_url=self.options.auth_url,
+                                    project_id=self.options.tenant_id,
+                                    endpoint_type=self.options.endpoint_type,
+                                    service_type=self.options.service_type,
+                                    auth_token=self.options.token,
+                                    cacert=self.options.cacert)
 
     def _set_shell_commands(self, cmds_dict):
         for k, v in cmds_dict.items():
