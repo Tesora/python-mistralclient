@@ -32,7 +32,8 @@ class Client(object):
     def __init__(self, mistral_url=None, username=None, api_key=None,
                  project_name=None, auth_url=None, project_id=None,
                  endpoint_type='publicURL', service_type='workflowv2',
-                 auth_token=None, user_id=None, cacert=None, insecure=False):
+                 auth_token=None, user_id=None, cacert=None, insecure=False,
+                 **kwargs):
 
         if mistral_url and not isinstance(mistral_url, six.string_types):
             raise RuntimeError('Mistral url should be string')
@@ -64,7 +65,8 @@ class Client(object):
             project_id,
             user_id,
             cacert=cacert,
-            insecure=insecure
+            insecure=insecure,
+            **kwargs
         )
 
         # Create all resource managers.
