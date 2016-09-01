@@ -26,31 +26,53 @@ LOG = logging.getLogger(__name__)
 
 
 def format_list(action_ex=None):
-    return format(action_ex, lister=True)
-
-
-def format(action_ex=None, lister=False):
     columns = (
         'ID',
         'Name',
         'Workflow name',
         'Task name',
+        'Task ID',
         'State',
-        'State info',
-        'Is accepted',
+        'Accepted',
     )
 
     if action_ex:
-        state_info = (action_ex.state_info if not lister
-                      else base.cut(action_ex.state_info))
-
         data = (
             action_ex.id,
             action_ex.name,
             action_ex.workflow_name,
             action_ex.task_name if hasattr(action_ex, 'task_name') else None,
+            action_ex.task_execution_id,
             action_ex.state,
-            state_info,
+            action_ex.accepted,
+        )
+    else:
+        data = (tuple('<none>' for _ in range(len(columns))),)
+
+    return columns, data
+
+
+def format(action_ex=None):
+    columns = (
+        'ID',
+        'Name',
+        'Workflow name',
+        'Task name',
+        'Task ID',
+        'State',
+        'State info',
+        'Accepted',
+    )
+
+    if action_ex:
+        data = (
+            action_ex.id,
+            action_ex.name,
+            action_ex.workflow_name,
+            action_ex.task_name if hasattr(action_ex, 'task_name') else None,
+            action_ex.task_execution_id,
+            action_ex.state,
+            action_ex.state_info,
             action_ex.accepted,
         )
     else:
@@ -144,12 +166,14 @@ class List(base.MistralLister):
         parser.add_argument(
             'task_execution_id',
             nargs='?',
-            help='Task execution ID.')
+            help='Task execution ID.'
+        )
 
         return parser
 
     def _get_resources(self, parsed_args):
         mistral_client = self.app.client_manager.workflow_engine
+
         return mistral_client.action_executions.list(
             parsed_args.task_execution_id
         )
@@ -161,14 +185,16 @@ class Get(command.ShowOne):
     def get_parser(self, prog_name):
         parser = super(Get, self).get_parser(prog_name)
 
-        parser.add_argument(
-            'id',
-            help='Action execution ID.')
+        parser.add_argument('action_execution', help='Action execution ID.')
+
         return parser
 
     def take_action(self, parsed_args):
         mistral_client = self.app.client_manager.workflow_engine
-        execution = mistral_client.action_executions.get(parsed_args.id)
+
+        execution = mistral_client.action_executions.get(
+            parsed_args.action_execution
+        )
 
         return format(execution)
 
@@ -268,7 +294,7 @@ class Delete(command.Command):
         parser = super(Delete, self).get_parser(prog_name)
 
         parser.add_argument(
-            'id',
+            'action_execution',
             nargs='+',
             help='Id of action execution identifier(s).'
         )
@@ -280,7 +306,7 @@ class Delete(command.Command):
 
         utils.do_action_on_many(
             lambda s: mistral_client.action_executions.delete(s),
-            parsed_args.id,
+            parsed_args.action_execution,
             "Request to delete action execution %s has been accepted.",
             "Unable to delete the specified action execution(s)."
         )

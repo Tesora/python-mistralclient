@@ -15,14 +15,11 @@
 #
 
 import json
-import logging
 
 from osc_lib.command import command
 
 from mistralclient.commands.v2 import base
 from mistralclient import utils
-
-LOG = logging.getLogger(__name__)
 
 
 def format_list(trigger=None):
@@ -87,14 +84,16 @@ class Get(command.ShowOne):
     def get_parser(self, prog_name):
         parser = super(Get, self).get_parser(prog_name)
 
-        parser.add_argument('name', help='Cron trigger name')
+        parser.add_argument('cron_trigger', help='Cron trigger name')
 
         return parser
 
     def take_action(self, parsed_args):
         mistral_client = self.app.client_manager.workflow_engine
 
-        return format(mistral_client.cron_triggers.get(parsed_args.name))
+        return format(mistral_client.cron_triggers.get(
+            parsed_args.cron_trigger
+        ))
 
 
 class Create(command.ShowOne):
@@ -173,7 +172,10 @@ class Delete(command.Command):
     def get_parser(self, prog_name):
         parser = super(Delete, self).get_parser(prog_name)
 
-        parser.add_argument('name', nargs='+', help='Name of cron trigger(s).')
+        parser.add_argument(
+            'cron_trigger',
+            nargs='+', help='Name of cron trigger(s).'
+        )
 
         return parser
 
@@ -182,7 +184,7 @@ class Delete(command.Command):
 
         utils.do_action_on_many(
             lambda s: mistral_client.cron_triggers.delete(s),
-            parsed_args.name,
+            parsed_args.cron_trigger,
             "Request to delete cron trigger %s has been accepted.",
             "Unable to delete the specified cron trigger(s)."
         )
