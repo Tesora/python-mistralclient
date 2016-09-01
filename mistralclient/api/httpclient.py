@@ -16,11 +16,12 @@
 import copy
 import os
 
+from oslo_utils import importutils
 import requests
 
 import logging
 
-import osprofiler.web
+osprofiler_web = importutils.try_import("osprofiler.web")
 
 
 LOG = logging.getLogger(__name__)
@@ -37,11 +38,14 @@ def log_request(func):
 
 class HTTPClient(object):
     def __init__(self, base_url, token=None, project_id=None, user_id=None,
-                 cacert=None, insecure=False):
+                 cacert=None, insecure=False, target_token=None,
+                 target_auth_uri=None, **kwargs):
         self.base_url = base_url
         self.token = token
         self.project_id = project_id
         self.user_id = user_id
+        self.target_token = target_token
+        self.target_auth_uri = target_auth_uri
         self.ssl_options = {}
 
         if self.base_url.startswith('https'):
@@ -53,8 +57,15 @@ class HTTPClient(object):
                 LOG.warning('Client is set to not verify even though '
                             'cacert is provided.')
 
-            self.ssl_options['verify'] = not insecure
-            self.ssl_options['cert'] = cacert
+            if insecure:
+                self.ssl_options['verify'] = False
+            else:
+                if cacert:
+                    self.ssl_options['verify'] = cacert
+                else:
+                    self.ssl_options['verify'] = True
+
+            self.ssl_options['cert'] = (kwargs.get('cert'), kwargs.get('key'))
 
     @log_request
     def get(self, url, headers=None):
@@ -108,7 +119,16 @@ class HTTPClient(object):
         if user_id:
             headers['X-User-Id'] = user_id
 
+        target_token = headers.get('X-Target-Auth-Token', self.target_token)
+        if target_token:
+            headers['X-Target-Auth-Token'] = target_token
+
+        target_auth_uri = headers.get('X-Target-Auth-Uri',
+                                      self.target_auth_uri)
+        if target_auth_uri:
+            headers['X-Target-Auth-Uri'] = target_auth_uri
+
         # Add headers for osprofiler.
-        headers.update(osprofiler.web.get_trace_id_headers())
+        headers.update(osprofiler_web.get_trace_id_headers())
 
         return headers
