@@ -76,7 +76,12 @@ class List(base.MistralLister):
 
     def get_parser(self, parsed_args):
         parser = super(List, self).get_parser(parsed_args)
-
+        parser.add_argument(
+            '--task',
+            nargs='?',
+            help="Parent task execution ID associated with workflow "
+                 "execution list.",
+        )
         parser.add_argument(
             '--marker',
             type=str,
@@ -113,6 +118,7 @@ class List(base.MistralLister):
     def _get_resources(self, parsed_args):
         mistral_client = self.app.client_manager.workflow_engine
         return mistral_client.executions.list(
+            task=parsed_args.task,
             marker=parsed_args.marker,
             limit=parsed_args.limit,
             sort_keys=parsed_args.sort_keys,
@@ -170,18 +176,12 @@ class Create(command.ShowOne):
 
     def take_action(self, parsed_args):
         if parsed_args.workflow_input:
-            try:
-                wf_input = json.loads(parsed_args.workflow_input)
-            except Exception:
-                wf_input = json.load(open(parsed_args.workflow_input))
+            wf_input = utils.load_json(parsed_args.workflow_input)
         else:
             wf_input = {}
 
         if parsed_args.params:
-            try:
-                params = json.loads(parsed_args.params)
-            except Exception:
-                params = json.load(open(parsed_args.params))
+            params = utils.load_json(parsed_args.params)
         else:
             params = {}
 
