@@ -238,7 +238,7 @@ class MistralShell(app.App):
             '--os-tenant-id',
             action='store',
             dest='tenant_id',
-            default=env('OS_TENANT_ID', 'OS_PROJECT_ID'),
+            default=c.env('OS_TENANT_ID', 'OS_PROJECT_ID'),
             help='Authentication tenant identifier (Env: OS_TENANT_ID'
                  ' or OS_PROJECT_ID)'
         )
@@ -246,7 +246,7 @@ class MistralShell(app.App):
             '--os-project-id',
             action='store',
             dest='project_id',
-            default=env('OS_TENANT_ID', 'OS_PROJECT_ID'),
+            default=c.env('OS_TENANT_ID', 'OS_PROJECT_ID'),
             help='Authentication project identifier (Env: OS_TENANT_ID'
                  ' or OS_PROJECT_ID), will use tenant_id if both tenant_id'
                  ' and project_id are set'
@@ -255,8 +255,8 @@ class MistralShell(app.App):
             '--os-tenant-name',
             action='store',
             dest='tenant_name',
-            default=env('OS_TENANT_NAME', 'OS_PROJECT_NAME',
-                        default='Default'),
+            default=c.env('OS_TENANT_NAME', 'OS_PROJECT_NAME',
+                          default='Default'),
             help='Authentication tenant name (Env: OS_TENANT_NAME'
                  ' or OS_PROJECT_NAME)'
         )
@@ -264,8 +264,8 @@ class MistralShell(app.App):
             '--os-project-name',
             action='store',
             dest='project_name',
-            default=env('OS_TENANT_NAME', 'OS_PROJECT_NAME',
-                        default='Default'),
+            default=c.env('OS_TENANT_NAME', 'OS_PROJECT_NAME',
+                          default='Default'),
             help='Authentication project name (Env: OS_TENANT_NAME'
                  ' or OS_PROJECT_NAME), will use tenant_name if both'
                  ' tenant_name and project_name are set'
@@ -324,6 +324,35 @@ class MistralShell(app.App):
 
         self._set_shell_commands(self._get_commands(ver))
 
+        # Set default for auth_url if not supplied. The default is not
+        # set at the parser to support use cases where auth is not enabled.
+        # An example use case would be a developer's environment.
+        if not self.options.auth_url:
+            if self.options.password or self.options.token:
+                self.options.auth_url = 'http://localhost:35357/v3'
+
+        # bash-completion should not require authentification.
+        if do_help or ('bash-completion' in argv):
+            self.options.auth_url = None
+
+        if self.options.auth_url and not self.options.token:
+            if not self.options.username:
+                raise exe.IllegalArgumentException(
+                    ("You must provide a username "
+                     "via --os-username env[OS_USERNAME]")
+                )
+
+            if not self.options.password:
+                raise exe.IllegalArgumentException(
+                    ("You must provide a password "
+                     "via --os-password env[OS_PASSWORD]")
+                )
+
+        kwargs = {
+            'cert': self.options.os_cert,
+            'key': self.options.os_key
+        }
+
         self.client = client.client(mistral_url=self.options.mistral_url,
                                     username=self.options.username,
                                     api_key=self.options.password,
@@ -333,7 +362,20 @@ class MistralShell(app.App):
                                     endpoint_type=self.options.endpoint_type,
                                     service_type=self.options.service_type,
                                     auth_token=self.options.token,
-                                    cacert=self.options.cacert)
+                                    cacert=self.options.os_cacert,
+                                    insecure=self.options.insecure,
+                                    **kwargs)
+
+        # Adding client_manager variable to make mistral client work with
+        # unified OpenStack client.
+        ClientManager = type(
+            'ClientManager',
+            (object,),
+            dict(workflow_engine=self.client)
+        )
+
+        self.client_manager = ClientManager()
+
 
     def _set_shell_commands(self, cmds_dict):
         for k, v in cmds_dict.items():
