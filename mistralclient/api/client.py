@@ -38,7 +38,7 @@ def client(mistral_url=None, username=None, api_key=None,
             auth_token=auth_token,
             user_id=user_id,
             cacert=cacert,
-            insecure=insecure
+            insecure=insecure,
             **kwargs
         )
 
